@@ -1112,6 +1112,8 @@ input[type="radio"] {
 					console.log(`${i}=${sets[i].v}`)
 					if(sets[i].t==='n') {
 						opt[i]=sets[i].v*1;
+					} else if (i == 'stop') {
+						opt[i]=(sets[i].v+'').split(','); 
 					} else {
 						opt[i]=sets[i].v+'';
 					}
