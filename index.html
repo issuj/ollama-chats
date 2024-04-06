@@ -159,8 +159,8 @@ input[type="file"] {
 	color: red;
 }
 #sets {
-	max-width: 500px;
-	width: 500px;
+	max-width: 780px;
+	width: 780px;
 }
 #sets .def {
 	white-space: nowrap;
@@ -428,7 +428,7 @@ input[type="radio"] {
 										<td class='val'><input style='width:100%' v-model='this.config.url.v'/></td>
 										<td class='def'>def: http://127.0.0.1:11434</td>
 									</tr>
-								<template v-for='j in [config,settings["req"],settings["options"]]'>
+								<template v-for='j in [config,settings["req"],settings["prompt"],settings["options"]]'>
 									<template v-for='(i,ind) in j'>
 										<tr>
 											<td class='title' :title='i.d'>{{ind}}</td>
@@ -607,7 +607,11 @@ input[type="radio"] {
 					},
 					req: {
 						keep_alive:			{v:900,t:'n',def:"300",d:'Time to keep model cached in memory, a number in seconds, any negative number will keep the model loaded in memory, 0 will unload the model immediately after generating a response.'},
-					}
+					},
+					prompt: {
+						instr_prefix:   {v:'Important, these are your thoughts to consider in reply: ',t:'s',def: '',d:'String to put before instr'},
+						prompt_postfix: {v:'(task: now it\'s your turn to reply as {{char}})',t:'s',def: '',d:'String to put after user chat message'},
+					},
 				},
 				stream:	true,
 				nick: {
@@ -907,7 +911,12 @@ input[type="radio"] {
 					} else if (d.config.version.v==1) {
 						delete d.settings; //just delete old settings )
 						t.updateAddParams(d,'settings');
+						t.updateAddParams(d.settings, 'prompt')
 						d.config.version.v=t.config.version.v;
+						parse(d);
+						return;
+					} else if (d.config.version.v > 1 && !d.settings.hasOwnProperty('prompt')) {
+						d.settings.prompt = JSON.parse(JSON.stringify(t.settings.prompt))
 						parse(d);
 						return;
 					}
@@ -1207,11 +1216,11 @@ input[type="radio"] {
 						let b		=this.brancha(i);
 						chat+=(`${b.msgs[b.msg].nick}: `+(b.msgs[b.msg].content.length?b.msgs[b.msg].content:'continue')+`\n\n`);
 					}
-					chat+=`(task: now it's your turn to reply as ${this.nicks[u].n}.`
+					chat+=this.settings.prompt.prompt_postfix.v.replaceAll('{{char}}', this.nicks[u].n)
 					if(this.instr[u].length) {
-						chat+=`Important, these are your thoughts to consider in reply: ${this.instr[u]}`;
+						chat+=`${this.settings.prompt.instr_prefix.v}${this.instr[u]}`.replaceAll('{{char}}', this.nicks[u].n);
 					}
-					chat+=`)\n\n${this.nicks[u].n}: `;
+					chat+=`\n\n${this.nicks[u].n}: `;
 					ms.push({
 						'content':	chat,
 						'role':			'user',
@@ -1228,7 +1237,7 @@ input[type="radio"] {
 					if(this.instr[u].length) {
 						ms.push(
 							{
-								'content':	`(Important! I must reply with this in mind: ${this.instr[u]})`,
+								'content':	`${this.settings.prompt.instr_prefix.v}${this.instr[u]}`,
 								'role':			'assistant',
 							},{
 								'content':	'continue',
